@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState ,useEffect} from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
+
 
 export default function HomeScreen({ client, onLogout }) {
   const [devices, setDevices] = useState([
@@ -8,6 +9,32 @@ export default function HomeScreen({ client, onLogout }) {
     { title: "Thiết bị 3", on: false },
   ]);
   const [fan, setFan] = useState("");
+
+  useEffect(() => {
+  if (!client) return;
+
+  client.subscribe("home/device1");
+  client.subscribe("home/device2");
+  client.subscribe("home/device3");
+  client.subscribe("home/fan");
+
+  const onMessage = (topic, payload) => {
+    const value = payload.toString();
+
+    if (topic === "home/fan") {
+      setFan(value);
+      return;
+    }
+    // topic dạng "home/device2" -> lấy số 2 -> index 1
+    const index = Number(topic.replace("home/device", "")) - 1;
+    setDevices((truocDo) =>
+      truocDo.map((d, idx) => (idx === index ? { ...d, on: value === "ON" } : d))
+    );
+  };
+
+  client.on("message", onMessage);
+  return () => client.removeListener("message", onMessage);   // dọn khi rời màn
+}, [client]);
 
   const doiTen = (i, text) =>
     setDevices(devices.map((d, idx) => (idx === i ? { ...d, title: text } : d)));
@@ -47,7 +74,7 @@ export default function HomeScreen({ client, onLogout }) {
 
       <Text style={{ marginTop: 20, marginBottom: 8 }}>Tốc độ quạt:</Text>
       <View style={{ flexDirection: "row" }}>
-        {["Yếu", "Vừa", "Mạnh"].map((muc) => (
+        {["Tắt","Yếu", "Vừa", "Mạnh", ].map((muc) => (
           <Pressable key={muc} onPress={() => chinhQuat(muc)}
             style={{ flex: 1, padding: 12, marginRight: 8, backgroundColor: fan === muc ? "#2563eb" : "#e5e7eb" }}>
             <Text style={{ textAlign: "center", color: fan === muc ? "#fff" : "#000" }}>{muc}</Text>
